@@ -1,14 +1,22 @@
 import pygame
 import numpy as np
 import random
+from pygame import mixer
 
 # Initialize pygame
 pygame.init()
 
 screen = pygame.display.set_mode((800, 600))
 background = pygame.image.load('Space_background.jpg')
+
+#Words
 font = pygame.font.Font('freesansbold.ttf', 32)
 over_font = pygame.font.Font('freesansbold.ttf', 64)
+health_font = pygame.font.Font('freesansbold.ttf', 10)
+
+#Background sound
+mixer.music.load('background.wav')
+mixer.music.play(-1)
 
 
 #Title and Icon
@@ -22,8 +30,7 @@ class Character:
         self.charImg = pygame.image.load(image_file)
         self.img_size = img_size
 
-        #Movement tracker
-        
+        #Movement tracker       
         self.speed = speed
         self.pos = np.array([x, y])
         self.char_move = np.array([0, 0])
@@ -31,8 +38,7 @@ class Character:
         self.down = np.array([0, speed])
         self.right = np.array([speed, 0])
         self.left = np.array([-1*speed, 0])
-        
-        
+
         #Health
         self.max_health = health
         self.health = health
@@ -70,10 +76,13 @@ class Player(Character):
 
     #Could add finesse score, also allow for volley counting and reloading
     rounds_fired = 0
+    
 
-    def __init__(self, name, image_file, img_size, x, y, health = 3, magazine=2, speed=0.6, state = 1):
+    def __init__(self, name, image_file, img_size, x, y, reload_time = 500, health = 3, magazine=2, speed=0.6, state = 1):
         super().__init__(name, image_file, img_size,health, x, y, speed, state)
         self.mag_size = magazine
+        self.reload_time = reload_time
+        self.time = 0
 
         #Dictionary that stores all available bullets. Auto initialization of projectile objects
         self.magazine = {}
@@ -97,10 +106,15 @@ class Player(Character):
             self.pos[1] = 550
 
     def fire(self):
+        if self.time < self.reload_time:
+            self.magazine[self.rounds_fired % self.mag_size].not_ready()
+        elif self.time >= self.reload_time:
+            self.magazine[self.rounds_fired % self.mag_size].ready()
+
         if self.magazine[self.rounds_fired % self.mag_size].state == 'ready':
             self.rounds_fired += 1
-        self.magazine[(self.rounds_fired-1) %
-                      self.mag_size].fire(self.pos[0], self.pos[1])
+            self.reset_time()
+            self.magazine[(self.rounds_fired-1) % self.mag_size].fire(self.pos[0], self.pos[1])
 
         print(self.rounds_fired)
 
@@ -131,6 +145,8 @@ class Player(Character):
         self.health -= damage
         if self.health <= 0:
             self.status_dead()
+            explosion_sound = mixer.Sound('explosion.wav')
+            explosion_sound.play()
             print('You are killed by', enemy)
             self.pos = [-10, -10]
 
@@ -146,6 +162,12 @@ class Player(Character):
             else:
                 collision = False
         return collision
+
+    def reset_time(self):
+        self.time = 0
+    
+    def increment_time(self):
+        self.time += 1
     
 
 
@@ -170,6 +192,10 @@ class Enemy(Character):
             player.score_up(10)
             self.respawn()
 
+    def show_health(self):
+        health = health_font.render('Health: '+ str(self.health), True, (255,255,255))
+        screen.blit(health, (self.pos[0]- 20, self.pos[1]-50))
+
     def respawn(self):
         new_x = random.randint(0, 739)
         new_y = random.randint(1,150)
@@ -186,7 +212,7 @@ class Projectile:
         self.bullet_image = pygame.image.load(image_file)
         self.name = name
         self.movement = np.array([0, -speed])
-        self.state = 'ready'
+        self.state = 'not ready'
         self.available = 'yes'
         self.pos = np.array([0, 0])
 
@@ -194,8 +220,10 @@ class Projectile:
         return self.name
 
     def fire(self, x, y):
-        print('fire')
         if self.state == 'ready':
+            bullet_sound = mixer.Sound('laser.wav')
+            bullet_sound.play()
+            print('fire')
             self.state = 'fire'
             self.available = 'yes'
             self.pos[0] = x
@@ -219,8 +247,9 @@ class Projectile:
             for i in range(len(enemy_list)):
                 d2 = np.dot(enemy_list[i].pos - self.pos, enemy_list[i].pos - self.pos)
                 if d2 < (enemy_list[i].img_size[0]/2)**2:
+                    explosion_sound = mixer.Sound('explosion.wav')
+                    explosion_sound.play()
                     enemy_list[i].decrease_health(1, player)
-                    print(enemy_list[i], 'health ', enemy_list[i].health)
                     player.score_up(1)
                     self.available = 'no'
                     collision = True
@@ -228,6 +257,12 @@ class Projectile:
                 else:
                     collision = False
         return collision
+
+    def ready(self):
+        self.state = 'ready'
+
+    def not_ready(self):
+        self.state = 'not ready'
 
 class Army:
     def __init__(self, monster_lst):
@@ -241,6 +276,9 @@ class Army:
     def boundary_check(self):
         for monster in self.monster_lst:
             monster.boundary_check()
+    def show_health(self):
+        for monster in self.monster_lst:
+            monster.show_health()
 
 def game_over(player):
     over_text = over_font.render('GAME OVER', True, (255,0,0))
@@ -260,7 +298,7 @@ Eyeball_monster3 = Enemy('Eyeball Monster3', 'eyeball.png', [80, 80], 3, random.
 enemy_list = [Eyeball_monster1, Eyeball_monster2, Eyeball_monster3]
 
 Eyeball_army = Army(enemy_list)
-player1 = Player('Marco','player.png',[30,30], 370, 480, magazine = 100)
+player1 = Player('Marco','player.png',[30,30], 370, 480, magazine = 10)
 
 
 running = True
@@ -270,6 +308,7 @@ while running:
     player1.display_projectiles()
     player1.display_char()
     Eyeball_army.display_army()
+    Eyeball_army.show_health()
 
     # event checker
     for event in pygame.event.get():
@@ -320,5 +359,6 @@ while running:
     player1.check_collisions(Eyeball_army.monster_lst)
     player1.enemy_collision(Eyeball_army.monster_lst)
     player1.show_score()
+    player1.increment_time()
     game_over(player1)
     pygame.display.update()
