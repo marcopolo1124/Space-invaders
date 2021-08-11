@@ -79,7 +79,7 @@ class Player(Character):
     rounds_fired = 0
     
 
-    def __init__(self, name, image_file, img_size, x, y, reload_time = 50, health = 3, magazine=2, speed=0.6, state = 1):
+    def __init__(self, name, image_file, img_size, x, y, reload_time = 500, health = 3, magazine=2, speed=0.6, state = 1):
         super().__init__(name, image_file, img_size,health, x, y, speed, state)
         self.mag_size = magazine
         self.reload_time = reload_time
@@ -157,7 +157,7 @@ class Player(Character):
             d2 = np.dot(enemy.pos - self.pos, enemy.pos - self.pos)
             if d2 < (enemy.img_size[0]/2)**2:
                 self.decrease_health(1, enemy)
-                print('player health', self.health)
+
                 collision = True
 
             else:
@@ -231,7 +231,6 @@ class Projectile:
         if self.state == 'ready':
             bullet_sound = mixer.Sound('laser.wav')
             bullet_sound.play()
-            print('fire')
             self.state = 'fire'
             self.available = 'yes'
             self.pos[0] = x
