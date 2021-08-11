@@ -73,12 +73,13 @@ class Player(Character):
 
     #Scoring
     score = 0
+    space = False
 
     #Could add finesse score, also allow for volley counting and reloading
     rounds_fired = 0
     
 
-    def __init__(self, name, image_file, img_size, x, y, reload_time = 500, health = 3, magazine=2, speed=0.6, state = 1):
+    def __init__(self, name, image_file, img_size, x, y, reload_time = 50, health = 3, magazine=2, speed=0.6, state = 1):
         super().__init__(name, image_file, img_size,health, x, y, speed, state)
         self.mag_size = magazine
         self.reload_time = reload_time
@@ -106,17 +107,17 @@ class Player(Character):
             self.pos[1] = 550
 
     def fire(self):
-        if self.time < self.reload_time:
-            self.magazine[self.rounds_fired % self.mag_size].not_ready()
-        elif self.time >= self.reload_time:
-            self.magazine[self.rounds_fired % self.mag_size].ready()
+        if self.space:
+            if self.time < self.reload_time and self.magazine[self.rounds_fired % self.mag_size].state == 'ready':
+                self.magazine[self.rounds_fired % self.mag_size].not_ready()
+            elif self.time >= self.reload_time and self.magazine[self.rounds_fired % self.mag_size].state == 'not ready':
+                self.magazine[self.rounds_fired % self.mag_size].ready()
 
-        if self.magazine[self.rounds_fired % self.mag_size].state == 'ready':
-            self.rounds_fired += 1
-            self.reset_time()
-            self.magazine[(self.rounds_fired-1) % self.mag_size].fire(self.pos[0], self.pos[1])
+            if self.magazine[self.rounds_fired % self.mag_size].state == 'ready':
+                self.rounds_fired += 1
+                self.reset_time()
+                self.magazine[(self.rounds_fired-1) % self.mag_size].fire(self.pos[0], self.pos[1])
 
-        print(self.rounds_fired)
 
     def display_projectiles(self):
         for i in range(self.mag_size):
@@ -168,6 +169,12 @@ class Player(Character):
     
     def increment_time(self):
         self.time += 1
+
+    def space_press(self):
+        self.space = True
+    
+    def space_release(self):
+        self.space= False
     
 
 
@@ -220,6 +227,7 @@ class Projectile:
         return self.name
 
     def fire(self, x, y):
+
         if self.state == 'ready':
             bullet_sound = mixer.Sound('laser.wav')
             bullet_sound.play()
@@ -239,7 +247,7 @@ class Projectile:
 
     def boundary_check(self):
         if self.pos[1] < 0:
-            self.state = 'ready'
+            self.ready()
 
     def collision(self, enemy_list, player):
         collision = False
@@ -328,7 +336,8 @@ while running:
             
             #Firing
             if event.key == pygame.K_SPACE:
-                player1.fire()
+                player1.space_press()
+
 
 
         # Check event for a key release
@@ -343,6 +352,8 @@ while running:
             #     player1.key_release(player1.up)
             # if event.key == pygame.K_DOWN:
             #     player1.key_release(player1.down)
+            if event.key == pygame.K_SPACE:
+                player1.space_release()
 
 
 
@@ -351,6 +362,7 @@ while running:
             running = False
 
     player1.update_pos()
+    player1.fire()
     player1.boundary_check()
     player1.update_projectiles_pos()
     Eyeball_army.update_pos()
