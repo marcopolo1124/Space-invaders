@@ -2,8 +2,13 @@ import pygame
 import numpy as np
 import random
 from pygame import mixer
+from character_class import Player
+from character_class import Enemy
+from army_class import Army
+from gun_class import Gun
 
-# Initialize pygame
+
+# Initialize pygame 
 pygame.init()
 
 screen = pygame.display.set_mode((800, 600))
@@ -25,295 +30,34 @@ icon = pygame.image.load('ufo.png')
 pygame.display.set_icon(icon)
 
 
-class Character:
-    def __init__(self, name, image_file, img_size, health, x, y, speed, state = 1):
-        self.charImg = pygame.image.load(image_file)
-        self.img_size = img_size
-
-        #Movement tracker       
-        self.speed = speed
-        self.pos = np.array([x, y])
-        self.char_move = np.array([0, 0])
-        self.up = np.array([0, -1 * speed])
-        self.down = np.array([0, speed])
-        self.right = np.array([speed, 0])
-        self.left = np.array([-1*speed, 0])
-
-        #Health
-        self.max_health = health
-        self.health = health
-        self.state = state
-
-        #Name
-        self.name=name
-
-
-
-    def __repr__(self):
-        return self.name
-
-    #Shows character on screen
-    def display_char(self):
-        if self.state == 1:
-            screen.blit(self.charImg, (self.pos[0] - (self.img_size[0]/2), self.pos[1] - (self.img_size[1]/2)))
-    
-    #Shows movement
-    def update_pos(self):
-        self.pos = self.pos + self.char_move
-
-    #Discern between dead and alive, 0 dead, 1 alive
-    def status_dead(self):
-        self.state = 0
-
-    def status_alive(self):
-        self.state = 1
-
-
-class Player(Character):
-
-    #Scoring
-    score = 0
-    space = False
-
-    #Could add finesse score, also allow for volley counting and reloading
-    rounds_fired = 0
-    
-
-    def __init__(self, name, image_file, img_size, x, y, reload_time = 500, health = 3, magazine=2, speed=0.6, state = 1):
-        super().__init__(name, image_file, img_size,health, x, y, speed, state)
-        self.mag_size = magazine
-        self.reload_time = reload_time
-        self.time = 0
-
-        #Dictionary that stores all available bullets. Auto initialization of projectile objects
-        self.magazine = {}
-        for i in range(magazine):
-            self.magazine[i] = Projectile('bullet.png', 'basic', 0.4)
-
-    def key_press(self, direction):
-        self.char_move = self.char_move + (direction * self.speed)
-
-    def key_release(self, direction):
-        self.char_move = self.char_move - (direction * self.speed)
-
-    def boundary_check(self):
-        if self.pos[0] < 30:
-            self.pos[0] = 30
-        if self.pos[0] > 740:
-            self.pos[0] = 740
-        if self.pos[1] < 0:
-            self.pos[1] = 0
-        if self.pos[1] > 550:
-            self.pos[1] = 550
-
-    def fire(self):
-        if self.space:
-            if self.time < self.reload_time and self.magazine[self.rounds_fired % self.mag_size].state == 'ready':
-                self.magazine[self.rounds_fired % self.mag_size].not_ready()
-            elif self.time >= self.reload_time and self.magazine[self.rounds_fired % self.mag_size].state == 'not ready':
-                self.magazine[self.rounds_fired % self.mag_size].ready()
-
-            if self.magazine[self.rounds_fired % self.mag_size].state == 'ready':
-                self.rounds_fired += 1
-                self.reset_time()
-                self.magazine[(self.rounds_fired-1) % self.mag_size].fire(self.pos[0], self.pos[1])
-
-
-    def display_projectiles(self):
-        for i in range(self.mag_size):
-            self.magazine[i].display_bullet()
-
-    def update_projectiles_pos(self):
-        for i in range(self.mag_size):
-            self.magazine[i].update_pos()
-
-    def check_projectiles_pos(self):
-        for i in range(self.mag_size):
-            self.magazine[i].boundary_check()
-
-    def check_collisions(self, enemy_list):
-        for i in range(self.mag_size):
-            self.magazine[i].collision(enemy_list, self)
-
-    def score_up(self, points):
-        self.score += points
-    
-    def show_score(self):
-        score = font.render('Score: '+ str(self.score), True, (255,255,255))
-        screen.blit(score, (10, 10))
-
-    def decrease_health(self, damage, enemy):
-        self.health -= damage
-        if self.health <= 0:
-            self.status_dead()
-            explosion_sound = mixer.Sound('explosion.wav')
-            explosion_sound.play()
-            print('You are killed by', enemy)
-            self.pos = [-10, -10]
-
-    def enemy_collision(self, enemy_list):
-        collision = False
-        for enemy in enemy_list:
-            d2 = np.dot(enemy.pos - self.pos, enemy.pos - self.pos)
-            if d2 < (enemy.img_size[0]/2)**2:
-                self.decrease_health(1, enemy)
-
-                collision = True
-
-            else:
-                collision = False
-        return collision
-
-    def reset_time(self):
-        self.time = 0
-    
-    def increment_time(self):
-        self.time += 1
-
-    def space_press(self):
-        self.space = True
-    
-    def space_release(self):
-        self.space= False
-    
-
-
-class Enemy(Character):
-    def __init__(self, name, image_file, img_size,health, x, y, speed, state):
-        super().__init__(name, image_file,img_size,health, x, y, speed, state)
-        self.char_move = np.array([speed, 0])
-        self.move_down = np.array([0, 50])
-
-
-    def boundary_check(self):
-        if self.pos[0] < 30 or self.pos[0] > 740:
-            self.char_move = -self.char_move
-            self.pos += self.move_down
-        if self.pos[1] > 600:
-            self.respawn()
-
-    def decrease_health(self, damage, player):
-        self.health -= damage
-        if self.health <= 0:
-            self.status_dead()
-            player.score_up(10)
-            self.respawn()
-
-    def show_health(self):
-        health = health_font.render('Health: '+ str(self.health), True, (255,255,255))
-        screen.blit(health, (self.pos[0]- 20, self.pos[1]-50))
-
-    def respawn(self):
-        new_x = random.randint(0, 739)
-        new_y = random.randint(1,150)
-        self.pos = np.array([new_x,new_y])
-        self.health = self.max_health
-        self.speed += 0.1
-        self.char_move = np.array([self.speed, 0])
-        self.status_alive()
-
-
-
-class Projectile:
-    def __init__(self, image_file, name, speed):
-        self.bullet_image = pygame.image.load(image_file)
-        self.name = name
-        self.movement = np.array([0, -speed])
-        self.state = 'not ready'
-        self.available = 'yes'
-        self.pos = np.array([0, 0])
-
-    def __repr__(self):
-        return self.name
-
-    def fire(self, x, y):
-
-        if self.state == 'ready':
-            bullet_sound = mixer.Sound('laser.wav')
-            bullet_sound.play()
-            self.state = 'fire'
-            self.available = 'yes'
-            self.pos[0] = x
-            self.pos[1] = y
-
-    def update_pos(self):
-        if self.state == 'fire':
-            self.pos = self.pos + self.movement
-
-    def display_bullet(self):
-        if self.state == 'fire' and self.available == 'yes':
-            screen.blit(self.bullet_image, (self.pos[0], self.pos[1]))
-
-    def boundary_check(self):
-        if self.pos[1] < 0:
-            self.ready()
-
-    def collision(self, enemy_list, player):
-        collision = False
-        if self.available == 'yes':
-            for i in range(len(enemy_list)):
-                d2 = np.dot(enemy_list[i].pos - self.pos, enemy_list[i].pos - self.pos)
-                if d2 < (enemy_list[i].img_size[0]/2)**2:
-                    explosion_sound = mixer.Sound('explosion.wav')
-                    explosion_sound.play()
-                    enemy_list[i].decrease_health(1, player)
-                    player.score_up(1)
-                    self.available = 'no'
-                    collision = True
-                
-                else:
-                    collision = False
-        return collision
-
-    def ready(self):
-        self.state = 'ready'
-
-    def not_ready(self):
-        self.state = 'not ready'
-
-class Army:
-    def __init__(self, monster_lst):
-        self.monster_lst = monster_lst
-    def display_army(self):
-        for monster in self.monster_lst:
-            monster.display_char()
-    def update_pos(self):
-        for monster in self.monster_lst:
-            monster.update_pos()
-    def boundary_check(self):
-        for monster in self.monster_lst:
-            monster.boundary_check()
-    def show_health(self):
-        for monster in self.monster_lst:
-            monster.show_health()
-
 def game_over(player):
     over_text = over_font.render('GAME OVER', True, (255,0,0))
     if player.score >= 1000 or player.state == 0:
         screen.blit(over_text, (200,250))
         
 
-                    
-
-
 # Initialize characters
 
-Eyeball_monster1 = Enemy('Eyeball Monster1', 'eyeball.png', [80, 80], 3, random.randint(0,739), random.randint(1,150), 0.2, 1)
-Eyeball_monster2 = Enemy('Eyeball Monster2', 'eyeball.png', [80, 80], 3, random.randint(0,739), random.randint(1,150), 0.2, 1)
-Eyeball_monster3 = Enemy('Eyeball Monster3', 'eyeball.png', [80, 80], 3, random.randint(0,739), random.randint(1,150), 0.2, 1)
+Eyeball_monster1 = Enemy(name = 'Eyeball Monster1', image_file = 'eyeball.png', img_size = [80, 80], health = 3, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1)
+Eyeball_monster2 = Enemy(name = 'Eyeball Monster2', image_file = 'eyeball.png', img_size = [80, 80], health = 3, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1)
+Eyeball_monster3 = Enemy(name = 'Eyeball Monster3', image_file = 'eyeball.png', img_size = [80, 80], health = 3, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1)
 
 enemy_list = [Eyeball_monster1, Eyeball_monster2, Eyeball_monster3]
 
 Eyeball_army = Army(enemy_list)
-player1 = Player('Marco','player.png',[30,30], 370, 480, magazine = 10)
-
+player1 = Player(name = 'Marco',image_file = 'player.png',img_size = [30,30], x= 370, y = 480, health = 3, speed = 0.6)
+pistol = Gun(magazine = 10, reload_time = 300, player = player1)
 
 running = True
 while running:
     screen.fill((0, 0, 34))
     screen.blit(background, (0, 0))
-    player1.display_projectiles()
+
+    #Show player on screen
+    pistol.display_projectiles()
     player1.display_char()
+
+    #Show all enemies on screen
     Eyeball_army.display_army()
     Eyeball_army.show_health()
 
@@ -335,7 +79,7 @@ while running:
             
             #Firing
             if event.key == pygame.K_SPACE:
-                player1.space_press()
+                pistol.space_press()
 
 
 
@@ -352,7 +96,7 @@ while running:
             # if event.key == pygame.K_DOWN:
             #     player1.key_release(player1.down)
             if event.key == pygame.K_SPACE:
-                player1.space_release()
+                pistol.space_release()
 
 
 
@@ -360,16 +104,30 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
+
+    #position update
     player1.update_pos()
-    player1.fire()
-    player1.boundary_check()
-    player1.update_projectiles_pos()
     Eyeball_army.update_pos()
+    pistol.update_projectiles_pos()
+
+    #firing
+    pistol.fire()
+
+    #check if position is out of bounds
+    player1.boundary_check()
     Eyeball_army.boundary_check()
-    player1.check_projectiles_pos()
-    player1.check_collisions(Eyeball_army.monster_lst)
+    pistol.check_projectiles_pos()
+
+    #Check damage
+    pistol.check_collisions(Eyeball_army.monster_lst)
     player1.enemy_collision(Eyeball_army.monster_lst)
+
+    #Show score
     player1.show_score()
-    player1.increment_time()
+
+    #Increase reload time
+    pistol.increment_time()
+
+    #Check game over condition
     game_over(player1)
     pygame.display.update()
