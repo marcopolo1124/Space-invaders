@@ -18,13 +18,15 @@ icon = pygame.image.load('ufo.png')
 pygame.display.set_icon(icon)
 
 class Projectile:
-    def __init__(self, image_file, name, speed):
+    def __init__(self, image_file, name, speed, direction = 1):
         self.bullet_image = pygame.image.load(image_file)
         self.name = name
         self.movement = np.array([0, -speed])
         self.state = 'ready'
         self.available = 'yes'
         self.pos = np.array([0, 0])
+        self.direction = direction
+        self.collision = False
 
     def __repr__(self):
         return self.name
@@ -41,18 +43,18 @@ class Projectile:
 
     def update_pos(self):
         if self.state == 'fire':
-            self.pos = self.pos + self.movement
+            self.pos = self.pos + (self.movement*self.direction)
 
     def display_bullet(self):
         if self.state == 'fire' and self.available == 'yes':
             screen.blit(self.bullet_image, (self.pos[0], self.pos[1]))
 
     def boundary_check(self):
-        if self.pos[1] < 0:
-            self.ready()
+        if self.pos[1] < 0 or self.pos[1] > 600:
+            self.not_ready()
 
-    def collision(self, enemy_list, player):
-        collision = False
+
+    def enemy_collision(self, enemy_list, player):
         if self.available == 'yes':
             for i in range(len(enemy_list)):
                 d2 = np.dot(enemy_list[i].pos - self.pos, enemy_list[i].pos - self.pos)
@@ -62,11 +64,8 @@ class Projectile:
                     enemy_list[i].decrease_health(1, player)
                     player.score_up(1)
                     self.available = 'no'
-                    collision = True
-                
-                else:
-                    collision = False
-        return collision
+
+
 
     def ready(self):
         self.state = 'ready'

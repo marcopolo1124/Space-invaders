@@ -25,3 +25,13 @@ class Army:
     def show_health(self):
         for monster in self.monster_lst:
             monster.show_health()
+    def fire(self, player_list):
+        for monster in self.monster_lst:
+            monster.fire(player_list)
+
+    def execute(self,player_lst):
+        self.display_army()
+        self.update_pos()
+        self.boundary_check()
+        self.show_health()
+        self.fire(player_lst)

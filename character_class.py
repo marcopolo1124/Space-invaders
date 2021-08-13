@@ -64,12 +64,22 @@ class Player(Character):
     #Scoring
     score = 0
 
+    def __init__(self, name, image_file, img_size, health, x, y, speed, gun, state = 1):
+        super().__init__(name, image_file, img_size, health, x, y, speed, state)
+        self.gun = gun
+
     #General function for either left or right key
     def key_press(self, direction):
         self.char_move = self.char_move + (direction * self.speed)
 
     def key_release(self, direction):
         self.char_move = self.char_move - (direction * self.speed)
+
+    def fire(self,enemy_list):
+        self.gun.execute(self.pos[0], self.pos[1], enemy_list, self)
+
+    def score_up(self, point):
+        self.score+= point
 
     #Keeps player within boundaries
     def boundary_check(self):
@@ -83,8 +93,6 @@ class Player(Character):
             self.pos[1] = 550
 
     #Increase score
-    def score_up(self, points):
-        self.score += points
 
     #Show score on screen
     def show_score(self):
@@ -109,22 +117,26 @@ class Player(Character):
             if d2 < (enemy.img_size[0]/2)**2:
                 self.decrease_health(1, enemy)
 
-                collision = True
 
-            else:
-                collision = False
-        return collision
-
-    
-
+    def execute(self, monster_lst):
+        self.display_char()
+        self.update_pos()
+        self.fire(monster_lst)
+        self.boundary_check()
+        self.enemy_collision(monster_lst)
+        self.show_score()
 
 class Enemy(Character):
 
+    score = 0
+
     #Initialization
-    def __init__(self, name, image_file, img_size,health, x, y, speed, state):
+    def __init__(self, name, image_file, img_size,health, x, y, speed, state, score_value, gun):
         super().__init__(name, image_file,img_size,health, x, y, speed, state)
         self.char_move = np.array([speed, 0])
         self.move_down = np.array([0, 50])
+        self.score_value = score_value
+        self.gun = gun
 
     #Check for boundary. move horizontally, go down when it hits the side, and move horizontally in the opposite direction
     def boundary_check(self):
@@ -134,12 +146,15 @@ class Enemy(Character):
         if self.pos[1] > 600:
             self.respawn()
 
+    def fire(self, player_list):
+        self.gun.execute(self.pos[0], self.pos[1], player_list, self)
+
     #Decrease health, check if self is dead
     def decrease_health(self, damage, player):
         self.health -= damage
         if self.health <= 0:
+            player.score_up(self.score_value)
             self.status_dead()
-            player.score_up(10)
             self.respawn()
 
     #Shows health. Might implement health bar
@@ -147,12 +162,16 @@ class Enemy(Character):
         health = health_font.render('Health: '+ str(self.health), True, (255,255,255))
         screen.blit(health, (self.pos[0]- 20, self.pos[1]-50))
 
+    def score_up(self, point):
+        self.score+= point
+
     #Respawning mechanics. Randomly chooses an x,y coordinate on the top half of the screen. Can be scrapped in favor of classic space invaders
     def respawn(self):
         #Chooses a new start point
         new_x = random.randint(0, 739)
         new_y = random.randint(1,150)
         self.pos = np.array([new_x,new_y])
+
 
         #Restore enemy health
         self.health = self.max_health

@@ -1,11 +1,11 @@
 import pygame
-import numpy as np
 import random
 from pygame import mixer
 from character_class import Player
 from character_class import Enemy
 from army_class import Army
-from gun_class import Gun
+from gun_class import Player_Gun
+from gun_class import Enemy_Gun
 
 
 # Initialize pygame 
@@ -38,32 +38,29 @@ def game_over(player):
 
 # Initialize characters
 
-Eyeball_monster1 = Enemy(name = 'Eyeball Monster1', image_file = 'eyeball.png', img_size = [80, 80], health = 3, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1)
-Eyeball_monster2 = Enemy(name = 'Eyeball Monster2', image_file = 'eyeball.png', img_size = [80, 80], health = 3, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1)
-Eyeball_monster3 = Enemy(name = 'Eyeball Monster3', image_file = 'eyeball.png', img_size = [80, 80], health = 3, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1)
+dick_gun = Player_Gun(img_file = 'penis.png', magazine = 20, reload_time = 50)
+pistol = Player_Gun(img_file = 'bullet.png',magazine = 10, reload_time = 300)
+eye1 = Enemy_Gun(img_file = 'tear.png', magazine = 10, reload_time = 200, direction = -1)
+eye2 = Enemy_Gun(img_file = 'tear.png',magazine = 10, reload_time = 400, direction = -1)
+eye3 = Enemy_Gun(img_file = 'tear.png',magazine = 10, reload_time = 500, direction = -1)
+
+Eyeball_monster1 = Enemy(name = 'Eyeball Monster1', image_file = 'eyeball.png', img_size = [80, 80], health = 3, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1, score_value = 10, gun = eye1)
+Eyeball_monster2 = Enemy(name = 'Eyeball Monster2', image_file = 'eyeball.png', img_size = [80, 80], health = 3, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1, score_value = 10, gun = eye2)
+Eyeball_monster3 = Enemy(name = 'Eyeball Monster3', image_file = 'eyeball.png', img_size = [80, 80], health = 3, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1, score_value = 10, gun = eye3)
 
 enemy_list = [Eyeball_monster1, Eyeball_monster2, Eyeball_monster3]
 
 Eyeball_army = Army(enemy_list)
-player1 = Player(name = 'Marco',image_file = 'player.png',img_size = [30,30], x= 370, y = 480, health = 3, speed = 0.6)
-pistol = Gun(magazine = 10, reload_time = 300, player = player1)
+player1 = Player(name = 'Marco',image_file = 'player.png',img_size = [30,30], x= 370, y = 480, health = 5, speed = 0.6, gun = dick_gun)
+
+
 
 running = True
 while running:
     screen.fill((0, 0, 34))
     screen.blit(background, (0, 0))
-
-    #Show player on screen
-    pistol.display_projectiles()
-    player1.display_char()
-
-    #Show all enemies on screen
-    Eyeball_army.display_army()
-    Eyeball_army.show_health()
-
     # event checker
     for event in pygame.event.get():
-
         # Check event for a key press
         if event.type == pygame.KEYDOWN:
 
@@ -72,16 +69,10 @@ while running:
                 player1.key_press(player1.left)
             if event.key == pygame.K_RIGHT:
                 player1.key_press(player1.right)
-            # if event.key == pygame.K_UP:
-            #     player1.key_press(player1.up)
-            # if event.key == pygame.K_DOWN:
-            #     player1.key_press(player1.down)
             
             #Firing
             if event.key == pygame.K_SPACE:
-                pistol.space_press()
-
-
+                player1.gun.firing_press()
 
         # Check event for a key release
         if event.type == pygame.KEYUP:
@@ -91,42 +82,15 @@ while running:
                 player1.key_release(player1.left)
             if event.key == pygame.K_RIGHT:
                 player1.key_release(player1.right)
-            # if event.key == pygame.K_UP:
-            #     player1.key_release(player1.up)
-            # if event.key == pygame.K_DOWN:
-            #     player1.key_release(player1.down)
             if event.key == pygame.K_SPACE:
-                pistol.space_release()
-
-
-
+                player1.gun.firing_release()
         # Quit checker
         if event.type == pygame.QUIT:
             running = False
 
 
-    #position update
-    player1.update_pos()
-    Eyeball_army.update_pos()
-    pistol.update_projectiles_pos()
-
-    #firing
-    pistol.fire()
-
-    #check if position is out of bounds
-    player1.boundary_check()
-    Eyeball_army.boundary_check()
-    pistol.check_projectiles_pos()
-
-    #Check damage
-    pistol.check_collisions(Eyeball_army.monster_lst)
-    player1.enemy_collision(Eyeball_army.monster_lst)
-
-    #Show score
-    player1.show_score()
-
-    #Increase reload time
-    pistol.increment_time()
+    player1.execute(Eyeball_army.monster_lst)
+    Eyeball_army.execute([player1])
 
     #Check game over condition
     game_over(player1)
