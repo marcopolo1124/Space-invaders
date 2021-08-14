@@ -42,16 +42,16 @@ dick_gun = Player_Gun(img_file = 'penis.png', magazine = 20, reload_time = 50)
 pistol = Player_Gun(img_file = 'bullet.png',magazine = 10, reload_time = 300)
 eye1 = Enemy_Gun(img_file = 'tear.png', magazine = 10, reload_time = 200, direction = -1)
 eye2 = Enemy_Gun(img_file = 'tear.png',magazine = 10, reload_time = 400, direction = -1)
-eye3 = Enemy_Gun(img_file = 'tear.png',magazine = 10, reload_time = 500, direction = -1)
+eye3 = Enemy_Gun(img_file = 'tear.png',magazine = 10, reload_time = 50, direction = -1)
 
-Eyeball_monster1 = Enemy(name = 'Eyeball Monster1', image_file = 'eyeball.png', img_size = [80, 80], health = 3, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1, score_value = 10, gun = eye1)
-Eyeball_monster2 = Enemy(name = 'Eyeball Monster2', image_file = 'eyeball.png', img_size = [80, 80], health = 3, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1, score_value = 10, gun = eye2)
+Eyeball_monster1 = Enemy(name = 'Eyeball Monster1', image_file = 'eyeball.png', img_size = [80, 80], health = 50, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1, score_value = 30, gun = eye1)
+Eyeball_monster2 = Enemy(name = 'Eyeball Monster2', image_file = 'eyeball.png', img_size = [80, 80], health = 10, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1, score_value = 20, gun = eye2)
 Eyeball_monster3 = Enemy(name = 'Eyeball Monster3', image_file = 'eyeball.png', img_size = [80, 80], health = 3, x = random.randint(0,739), y = random.randint(1,150), speed = 0.2, state = 1, score_value = 10, gun = eye3)
 
 enemy_list = [Eyeball_monster1, Eyeball_monster2, Eyeball_monster3]
 
 Eyeball_army = Army(enemy_list)
-player1 = Player(name = 'Marco',image_file = 'player.png',img_size = [30,30], x= 370, y = 480, health = 5, speed = 0.6, gun = dick_gun)
+player1 = Player(name = 'Marco',image_file = 'player.png',img_size = [50,50], x= 370, y = 480, health = 5, speed = 0.6, gun = dick_gun)
 
 
 
